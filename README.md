@@ -30,24 +30,63 @@ A powerful, universal CLI wrapper with remote control capabilities. Wrap any com
 
 ### Installation
 
+#### Option 1: From npm (when published)
 ```bash
 npm install -g universal-happy-cli
+```
+
+#### Option 2: From source (current development)
+```bash
+# Clone the repository
+git clone https://github.com/ayaka209/universal-happy-cli.git
+cd universal-happy-cli
+
+# Install dependencies
+npm install
+
+# Use directly with tsx
+npx tsx src/universal/cli.ts start -- echo "Hello World"
+
+# Or install locally
+npm run build
+npm install -g .
+```
+
+#### Option 3: Standalone executables
+```bash
+# Build standalone executable
+npm run build:bun  # Creates ~27MB executable
+# or
+npm run build:deno # Creates ~45MB executable
+
+# Run directly without Node.js
+./dist/uhappy-bun start -- echo "Standalone execution"
 ```
 
 ### Basic Usage
 
 #### 1. Universal CLI Wrapper
 ```bash
-# Wrap any CLI tool with enhanced features
-uhappy start git status
-uhappy start docker ps --format html
-uhappy start python -i
+# Wrap any CLI tool with enhanced features (note the -- separator)
+uhappy start -- git status
+uhappy start --format html -- docker ps
+uhappy start -- python -i
 
 # Session management
 uhappy list
 uhappy send abc123 "git commit -m 'update'"
 uhappy history abc123 --format json
 uhappy stats
+
+# Development commands (when using from source)
+npm start -- start -- echo "Hello World"
+npm run test
+npm run test:all
+
+# Quick testing
+npm run test:quick        # Fast functionality test
+npm run test:format       # ANSI processing test
+npm run test:real-world   # Real CLI tools test
 ```
 
 #### 2. Interactive Mode
@@ -88,6 +127,34 @@ uhappy daemon start
 - `uhappy config export` – Export configuration
 - `uhappy config import <file>` – Import configuration
 
+### Development Commands (npm scripts)
+```bash
+# Testing
+npm run test              # Run basic functionality tests
+npm run test:format       # Run format processing tests
+npm run test:real-world   # Run real-world scenario tests
+npm run test:quick        # Run quick validation tests
+npm run test:all          # Run all tests
+
+# Development
+npm run start             # Start CLI (same as tsx src/universal/cli.ts)
+npm run dev               # Development mode
+npm run typecheck         # TypeScript type checking
+
+# Building
+npm run build             # Build project with pkgroll
+npm run build:standalone  # Build standalone executables
+npm run build:bun         # Build Bun executable
+npm run build:deno        # Build Deno executable
+
+# Legacy features
+npm run daemon:start      # Start Happy CLI daemon
+npm run daemon:stop       # Stop Happy CLI daemon
+npm run daemon:status     # Check daemon status
+npm run legacy:dev        # Legacy development mode
+npm run legacy:test       # Legacy test suite
+```
+
 ### Legacy Happy CLI Commands
 - `uhappy claude` – Start Claude Code with mobile remote control
 - `uhappy auth` – Manage authentication
@@ -96,6 +163,101 @@ uhappy daemon start
 - `uhappy notify` – Send push notifications
 - `uhappy daemon` – Manage background service
 - `uhappy doctor` – System diagnostics
+
+## 🔨 Development Usage (Before npm publish)
+
+If you want to use Universal Happy CLI before it's published to npm, here are several methods:
+
+### Method 1: Direct tsx execution (Recommended for development)
+```bash
+# Clone and setup
+git clone https://github.com/ayaka209/universal-happy-cli.git
+cd universal-happy-cli
+npm install
+
+# Use directly with tsx
+npx tsx src/universal/cli.ts start -- echo "Hello World"
+npx tsx src/universal/cli.ts start -- git status
+npx tsx src/universal/cli.ts start --format json -- node -e "console.log('test')"
+
+# Session management
+npx tsx src/universal/cli.ts list
+npx tsx src/universal/cli.ts stats
+npx tsx src/universal/cli.ts test
+```
+
+### Method 2: Local npm installation
+```bash
+# In the project directory
+npm run build
+npm install -g .
+
+# Now use globally
+uhappy start -- echo "Now available globally"
+uhappy test
+uhappy start -- git log --oneline -5
+```
+
+### Method 3: npm link for development
+```bash
+# Create symlink for development
+npm link
+
+# Use from anywhere
+cd /some/other/directory
+uhappy start -- ls -la
+uhappy start -- python --version
+
+# Unlink when done
+npm unlink -g universal-happy-cli
+```
+
+### Method 4: Standalone executables
+```bash
+# Build standalone executable (no Node.js required)
+npm run build:bun
+
+# Use the executable directly
+./dist/uhappy-bun.exe start -- echo "Standalone"
+./dist/uhappy-bun.exe test
+
+# Share with others (they don't need Node.js)
+cp dist/uhappy-bun.exe /path/to/share/
+```
+
+### Method 5: Package distribution
+```bash
+# Create distributable package
+npm pack
+# Creates: universal-happy-cli-1.0.0.tgz
+
+# Others can install from the tarball
+npm install -g ./universal-happy-cli-1.0.0.tgz
+```
+
+### Quick Testing Examples
+```bash
+# Test different CLI tools
+npx tsx src/universal/cli.ts start -- git log --oneline --color=always -5
+npx tsx src/universal/cli.ts start -- node -e "console.log(process.versions)"
+npx tsx src/universal/cli.ts start -- python -c "import sys; print(sys.version)"
+
+# Test different output formats
+npx tsx src/universal/cli.ts start --format json -- echo "JSON output"
+npx tsx src/universal/cli.ts start --format html -- git status
+
+# Run test suites
+npm run test:quick      # Fast functionality test
+npm run test:format     # ANSI processing test
+npm run test:real-world # Real CLI tools test
+npm run test:all        # All tests
+```
+
+### Performance Comparison
+- **tsx direct**: ~200-300ms startup (includes TypeScript compilation)
+- **npm scripts**: ~100-200ms startup
+- **Local install**: ~50-100ms startup (pre-compiled)
+- **Standalone exe**: ~30-50ms startup (fastest)
 
 ## ⚙️ Configuration
 
