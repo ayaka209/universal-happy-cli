@@ -23,6 +23,7 @@ A powerful, universal CLI wrapper with remote control capabilities. Wrap any com
 - **Auto Tool Detection** - Automatically detect and configure common CLI tools
 - **Pattern Matching** - Configurable patterns for different tool outputs
 - **Progress Detection** - Smart detection and handling of progress indicators
+- **Environment Inheritance** - Complete inheritance of all parent environment variables
 - **Configurable Processing** - YAML-based configuration for tool-specific behaviors
 - **Standalone Executables** - Build with Bun or Deno for distribution
 
@@ -250,6 +251,7 @@ npx tsx src/universal/cli.ts start --format html -- git status
 npm run test:quick      # Fast functionality test
 npm run test:format     # ANSI processing test
 npm run test:real-world # Real CLI tools test
+npm run test:env        # Environment variable inheritance test
 npm run test:all        # All tests
 ```
 
@@ -320,6 +322,35 @@ sessionTimeout: 3600
 maxSessions: 20
 logLevel: "info"
 ```
+
+### Environment Variable Inheritance
+Universal Happy CLI automatically inherits **ALL** environment variables from the parent process:
+
+```bash
+# Environment variables are automatically inherited
+export MY_API_KEY="secret123"
+export DATABASE_URL="postgresql://localhost/mydb"
+uhappy start -- my-app
+# my-app will have access to MY_API_KEY and DATABASE_URL
+
+# Override specific environment variables
+uhappy start --env '{"NODE_ENV":"production"}' -- node server.js
+
+# Verify environment inheritance
+PARENT_VAR=test uhappy start -- node -e "console.log(process.env.PARENT_VAR)"
+# Output: test
+
+# All 100+ environment variables are inherited
+uhappy start -- node -e "console.log('Env count:', Object.keys(process.env).length)"
+# Output: Env count: 142
+```
+
+**Features:**
+- ✅ **Complete Inheritance** - All parent environment variables passed through
+- ✅ **Override Support** - Custom environment variables via `--env` option
+- ✅ **UTF-8 Guaranteed** - Automatic LANG/LC_ALL setup for proper encoding
+- ✅ **Cross-Platform** - Works on Windows, macOS, and Linux
+- ✅ **Performance** - Zero overhead for environment variable passing
 
 ## 🎯 Usage Examples
 
