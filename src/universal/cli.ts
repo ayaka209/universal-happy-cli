@@ -250,6 +250,117 @@ program
   });
 
 /**
+ * Stop services command
+ */
+program
+  .command('stop')
+  .description('Stop Universal Happy CLI services')
+  .option('-a, --all', 'Stop all sessions and services')
+  .option('-s, --sessions', 'Stop all active sessions only')
+  .option('-d, --daemon', 'Stop Happy CLI daemon')
+  .option('-f, --force', 'Force termination (SIGKILL)')
+  .option('--clean', 'Clean up and stop everything (sessions + daemon + cleanup)')
+  .action(async (options) => {
+    await initializeCLI();
+
+    let sessionsStopped = 0;
+    let daemonStopped = false;
+
+    try {
+      // Stop all sessions if requested
+      if (options.all || options.sessions || options.clean) {
+        console.log(chalk.blue('🛑 Stopping all Universal CLI sessions...'));
+        
+        const sessions = sessionManager.listSessions();
+        const activeSessions = sessions.filter(s => 
+          s.status === 'running' || s.status === 'paused' || s.status === 'idle'
+        );
+
+        if (activeSessions.length === 0) {
+          console.log(chalk.yellow('  No active sessions to stop'));
+        } else {
+          for (const session of activeSessions) {
+            try {
+              await sessionManager.terminateSession(session.id, options.force);
+              sessionsStopped++;
+              console.log(chalk.green(`  ✓ Stopped session ${session.id.slice(0, 8)} (${session.command})`));
+            } catch (error) {
+              console.log(chalk.red(`  ✗ Failed to stop session ${session.id.slice(0, 8)}: ${error.message}`));
+            }
+          }
+        }
+      }
+
+      // Stop Happy CLI daemon if requested
+      if (options.all || options.daemon || options.clean) {
+        console.log(chalk.blue('🛑 Stopping Happy CLI daemon...'));
+        
+        try {
+          // Import daemon control functions
+          const { stopDaemon } = await import('@/daemon/controlClient');
+          await stopDaemon();
+          daemonStopped = true;
+          console.log(chalk.green('  ✓ Happy CLI daemon stopped'));
+        } catch (error) {
+          console.log(chalk.yellow(`  ⚠ Daemon might not be running: ${error.message}`));
+        }
+      }
+
+      // Clean up processes if requested
+      if (options.clean) {
+        console.log(chalk.blue('🧹 Cleaning up runaway processes...'));
+        
+        try {
+          const { killRunawayHappyProcesses } = await import('@/daemon/doctor');
+          const result = await killRunawayHappyProcesses();
+          
+          if (result.killed > 0) {
+            console.log(chalk.green(`  ✓ Cleaned up ${result.killed} runaway processes`));
+          } else {
+            console.log(chalk.yellow('  No runaway processes found'));
+          }
+          
+          if (result.errors.length > 0) {
+            console.log(chalk.red(`  ✗ Cleanup errors: ${result.errors.join(', ')}`));
+          }
+        } catch (error) {
+          console.log(chalk.red(`  ✗ Cleanup failed: ${error.message}`));
+        }
+      }
+
+      // Shutdown session manager
+      await sessionManager.shutdown();
+
+      // Summary
+      console.log(chalk.green('\n📋 Stop Summary:'));
+      if (sessionsStopped > 0) {
+        console.log(chalk.green(`  Sessions stopped: ${sessionsStopped}`));
+      }
+      if (daemonStopped) {
+        console.log(chalk.green(`  Daemon stopped: Yes`));
+      }
+      if (options.clean) {
+        console.log(chalk.green(`  Cleanup performed: Yes`));
+      }
+
+      // Show help if no specific options were provided
+      if (!options.all && !options.sessions && !options.daemon && !options.clean) {
+        console.log(chalk.yellow('\nNo specific stop action specified. Available options:'));
+        console.log(chalk.cyan('  uhappy stop --sessions    ') + 'Stop all Universal CLI sessions');
+        console.log(chalk.cyan('  uhappy stop --daemon      ') + 'Stop Happy CLI daemon');
+        console.log(chalk.cyan('  uhappy stop --all         ') + 'Stop sessions and daemon');
+        console.log(chalk.cyan('  uhappy stop --clean       ') + 'Stop everything and clean up');
+        console.log(chalk.cyan('  uhappy stop --force       ') + 'Force termination (add to any option)');
+        console.log(chalk.gray('\nFor single session: uhappy kill <sessionId>'));
+      }
+
+    } catch (error) {
+      console.error(chalk.red('Stop operation failed:'), error);
+      process.exit(1);
+    }
+  });
+
+/**
  * Show statistics
  */
 program

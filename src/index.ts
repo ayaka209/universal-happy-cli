@@ -439,6 +439,12 @@ ${chalk.bold('CLI Tool Wrapping:')}
   uhappy claude [options]              Wrap Claude Code with universal CLI features
   uhappy codex                         Codex AI programming mode
 
+${chalk.bold('Service Management:')}
+  uhappy stop --sessions               Stop all Universal CLI sessions
+  uhappy stop --daemon                 Stop Happy CLI daemon
+  uhappy stop --all                    Stop sessions and daemon
+  uhappy stop --clean                  Stop everything and clean up
+
 ${chalk.bold('Special Happy CLI Modes:')}
   uhappy happy-claude [options]        Original Happy CLI Claude integration with mobile control
   uhappy auth                          Manage authentication
@@ -452,6 +458,7 @@ ${chalk.bold('Examples:')}
   uhappy start -- docker ps           Monitor docker processes
   uhappy claude --resume              Wrap Claude Code with session management
   uhappy happy-claude --resume         Use original Happy CLI integration
+  uhappy stop --all                   Stop all services
   uhappy interactive node              Start interactive Node.js session
 
 ${chalk.bold('Note:')} By default, uhappy uses the universal CLI wrapper.

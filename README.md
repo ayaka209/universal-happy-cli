@@ -120,6 +120,12 @@ uhappy codex
 uhappy happy-claude               # Start Claude with original Happy CLI mobile control
 uhappy happy-claude --resume      # Resume with full Happy CLI features
 
+# Service management
+uhappy stop --sessions           # Stop all Universal CLI sessions
+uhappy stop --daemon             # Stop Happy CLI daemon
+uhappy stop --all                # Stop all services
+uhappy stop --clean              # Complete cleanup
+
 # Management commands
 uhappy daemon start              # Daemon management
 uhappy auth                      # Authentication
@@ -139,6 +145,13 @@ uhappy notify                    # Push notifications
 - `uhappy kill <sessionId> [--force]` – Terminate session
 - `uhappy stats` – Show system statistics
 - `uhappy test` – Run functionality tests
+
+### Service Management Commands
+- `uhappy stop --sessions` – Stop all Universal CLI sessions
+- `uhappy stop --daemon` – Stop Happy CLI daemon
+- `uhappy stop --all` – Stop sessions and daemon
+- `uhappy stop --clean` – Stop everything and clean up runaway processes
+- `uhappy stop --force` – Force termination (combine with other options)
 
 ### CLI Tool Wrapping Commands
 - `uhappy claude [options]` – Wrap Claude Code with universal CLI features
