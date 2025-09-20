@@ -64,6 +64,8 @@ program
   .option('-r, --remote', 'Enable remote control')
   .option('-p, --port <port>', 'Port for remote control (default: 3000)', '3000')
   .option('-f, --format <format>', 'Output format (text|html|json|raw)', 'text')
+  .option('--no-output', 'Capture output without showing in terminal (for remote control)')
+  .option('--direct', 'Show output directly in terminal (default behavior)')
   .action(async (command: string, args: string[], options) => {
     await initializeCLI();
 
@@ -78,13 +80,17 @@ program
         }
       }
 
+      // Determine output mode: direct output is default unless --no-output is specified
+      const directOutput = !options.noOutput;
+
       const sessionId = await sessionManager.createSession({
         tool: options.tool,
         command,
         args,
         cwd: options.cwd,
         env,
-        autoStart: true
+        autoStart: true,
+        directOutput
       });
 
       console.log(chalk.green(`Session started: ${sessionId}`));

@@ -79,6 +79,9 @@ export class ProcessManager extends EventEmitter<ProcessEvents> {
    * Create child process with appropriate stdio configuration
    */
   private createChildProcess(config: ProcessConfig): ChildProcess {
+    // Determine stdio mode: inherit for direct terminal output, pipe for capture
+    const useDirectOutput = config.directOutput !== false; // Default to direct output
+    
     const spawnOptions = {
       cwd: config.cwd || process.cwd(),
       env: {
@@ -88,8 +91,10 @@ export class ProcessManager extends EventEmitter<ProcessEvents> {
         LANG: 'en_US.UTF-8',
         LC_ALL: 'en_US.UTF-8'
       },
-      // Use pipe for all stdio to capture everything
-      stdio: ['pipe', 'pipe', 'pipe'] as const,
+      // Use inherit for direct output or pipe for capture
+      stdio: useDirectOutput ? 
+        ['inherit', 'inherit', 'inherit'] as const : 
+        ['pipe', 'pipe', 'pipe'] as const,
       // Detach from parent on Unix-like systems only
       detached: process.platform !== 'win32',
       // Kill entire process group when parent exits
@@ -105,28 +110,35 @@ export class ProcessManager extends EventEmitter<ProcessEvents> {
    * Setup event handlers for a managed process
    */
   private setupProcessHandlers(managedProcess: ManagedProcess): void {
-    const { process: childProcess, id } = managedProcess;
+    const { process: childProcess, id, config } = managedProcess;
 
-    // Handle stdout data
-    if (childProcess.stdout) {
-      childProcess.stdout.on('data', (data: Buffer) => {
-        this.emit('stdout', data, id);
-      });
+    // Only setup stdio handlers if we're in pipe mode
+    if (config.directOutput === false) {
+      // Handle stdout data
+      if (childProcess.stdout) {
+        childProcess.stdout.on('data', (data: Buffer) => {
+          this.emit('stdout', data, id);
+        });
 
-      childProcess.stdout.on('error', (error: Error) => {
-        console.warn(`stdout error for process ${id}:`, error);
-      });
-    }
+        childProcess.stdout.on('error', (error: Error) => {
+          console.warn(`stdout error for process ${id}:`, error);
+        });
+      }
 
-    // Handle stderr data
-    if (childProcess.stderr) {
-      childProcess.stderr.on('data', (data: Buffer) => {
-        this.emit('stderr', data, id);
-      });
+      // Handle stderr data
+      if (childProcess.stderr) {
+        childProcess.stderr.on('data', (data: Buffer) => {
+          this.emit('stderr', data, id);
+        });
 
-      childProcess.stderr.on('error', (error: Error) => {
-        console.warn(`stderr error for process ${id}:`, error);
-      });
+        childProcess.stderr.on('error', (error: Error) => {
+          console.warn(`stderr error for process ${id}:`, error);
+        });
+      }
+    } else {
+      // In inherit mode, we can't capture stdio, but we can emit a notice
+      // that the process is running in direct output mode
+      this.emit('stdout', Buffer.from(`[Process running in direct output mode]\n`), id);
     }
 
     // Handle process exit

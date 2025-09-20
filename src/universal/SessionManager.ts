@@ -19,6 +19,7 @@ import { ProcessManager } from './ProcessManager.js';
 import { StreamParser } from './StreamParser.js';
 import { FormatProcessor } from './FormatProcessor.js';
 import { ConfigManager } from './ConfigManager.js';
+import { happyIntegration } from './HappyIntegration.js';
 
 export interface SessionEvents {
   sessionCreated: (sessionId: string) => void;
@@ -66,6 +67,7 @@ export class SessionManager extends EventEmitter<SessionEvents> {
     cwd?: string;
     env?: Record<string, string>;
     autoStart?: boolean;
+    directOutput?: boolean;
   }): Promise<string> {
     if (this.sessions.size >= this.maxSessions) {
       throw new Error(`Maximum number of sessions (${this.maxSessions}) reached`);
@@ -89,6 +91,7 @@ export class SessionManager extends EventEmitter<SessionEvents> {
         ...toolConfig?.env,
         ...options.env
       },
+      directOutput: options.directOutput !== false, // Default to true
       outputHistory: [],
       inputHistory: [],
       remoteConnections: new Set()
@@ -96,6 +99,14 @@ export class SessionManager extends EventEmitter<SessionEvents> {
 
     this.sessions.set(sessionId, session);
     this.emit('sessionCreated', sessionId);
+
+    // Register with Happy CLI integration for mobile app visibility
+    try {
+      await happyIntegration.registerSession(session);
+    } catch (error) {
+      // Don't fail session creation if integration fails
+      console.warn('Failed to register session with Happy CLI integration:', error);
+    }
 
     if (options.autoStart !== false) {
       await this.startSession(sessionId);
@@ -124,7 +135,8 @@ export class SessionManager extends EventEmitter<SessionEvents> {
         command: session.command,
         args: session.args,
         cwd: session.cwd,
-        env: session.env
+        env: session.env,
+        directOutput: session.directOutput
       };
 
       const managedProcess = await this.processManager.spawn(sessionId, processConfig);
@@ -477,6 +489,12 @@ export class SessionManager extends EventEmitter<SessionEvents> {
     session.status = status;
     session.lastActivity = Date.now();
     this.emit('statusChange', sessionId, status);
+
+    // Update status in Happy CLI integration
+    happyIntegration.updateSessionStatus(sessionId, status).catch(error => {
+      // Don't fail status update if integration fails
+      console.warn('Failed to update session status in Happy CLI integration:', error);
+    });
   }
 
   /**

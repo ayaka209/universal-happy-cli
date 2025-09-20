@@ -66,6 +66,8 @@ export interface ProcessConfig {
   env?: Record<string, string>;
   /** Process timeout in ms */
   timeout?: number;
+  /** Whether to output directly to terminal (default: true) */
+  directOutput?: boolean;
 }
 
 export interface ToolConfig {
@@ -136,6 +138,8 @@ export interface Session {
   cwd: string;
   /** Environment variables */
   env: Record<string, string>;
+  /** Whether to output directly to terminal */
+  directOutput?: boolean;
   /** Output history */
   outputHistory: TerminalOutput[];
   /** Input history */
