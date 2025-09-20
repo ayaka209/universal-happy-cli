@@ -90,10 +90,12 @@ export class ProcessManager extends EventEmitter<ProcessEvents> {
       },
       // Use pipe for all stdio to capture everything
       stdio: ['pipe', 'pipe', 'pipe'] as const,
-      // Detach from parent on Windows
+      // Detach from parent on Unix-like systems only
       detached: process.platform !== 'win32',
       // Kill entire process group when parent exits
-      killSignal: 'SIGTERM'
+      killSignal: 'SIGTERM',
+      // Enable shell to find executables and handle .cmd/.bat files on Windows
+      shell: true
     };
 
     return spawn(config.command, config.args, spawnOptions);

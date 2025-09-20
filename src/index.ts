@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * CLI entry point for happy command
- * 
- * Simple argument parsing without any CLI framework dependencies
+ * CLI entry point for Universal Happy CLI
+ *
+ * Unified command-line interface that defaults to universal CLI wrapper
+ * with special modes for Claude and Codex integration
  */
 
 
@@ -77,11 +78,161 @@ import { execFileSync } from 'node:child_process'
       process.exit(1)
     }
     return;
+  } else if (subcommand === 'claude') {
+    // Handle Claude Code via universal CLI wrapper
+    try {
+      // Convert 'uhappy claude [args]' to 'uhappy start -- claude [args]'
+      const claudeArgs = args.slice(1); // Remove 'claude'
+      const universalArgs = ['start', '--', 'claude', ...claudeArgs];
+
+      // Check for help flag specifically
+      if (claudeArgs.includes('-h') || claudeArgs.includes('--help')) {
+        console.log(`
+${chalk.bold('uhappy claude')} - Claude Code via Universal CLI Wrapper
+
+${chalk.bold('Usage:')}
+  uhappy claude [options]     Wrap Claude Code with universal CLI features
+
+${chalk.bold('Examples:')}
+  uhappy claude              Start Claude session
+  uhappy claude --resume     Resume previous session
+  uhappy claude --help       Show Claude help
+
+${chalk.bold('Note:')} This wraps the ${chalk.cyan('claude')} command using the universal CLI wrapper.
+For the original Happy CLI integration, use: ${chalk.cyan('uhappy happy-claude')}
+
+${chalk.gray('─'.repeat(60))}
+${chalk.bold.cyan('This will execute:')} ${chalk.cyan('uhappy start -- claude [your-args]')}
+`)
+        process.exit(0)
+      }
+
+      // Delegate to universal CLI with claude command
+      const { execSync } = await import('node:child_process');
+      const path = await import('node:path');
+      const { fileURLToPath } = await import('node:url');
+
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const universalCliPath = path.join(__dirname, 'universal', 'cli.ts');
+
+      const command = `npx tsx "${universalCliPath}" ${universalArgs.join(' ')}`;
+
+      execSync(command, {
+        stdio: 'inherit',
+        env: process.env,
+        cwd: process.cwd()
+      });
+
+    } catch (error: any) {
+      if (error.status !== undefined) {
+        process.exit(error.status);
+      }
+      console.error(chalk.red('Failed to wrap claude command:'), error.message);
+      process.exit(1);
+    }
+    return;
+  } else if (subcommand === 'happy-claude') {
+    // Handle original Happy CLI Claude integration (special mode)
+    try {
+      // Remove 'happy-claude' from args and parse remaining
+      const claudeArgs = args.slice(1);
+
+      // Parse command line arguments for Claude mode
+      const options: StartOptions = {}
+      let showHelp = false
+      let showVersion = false
+      const unknownArgs: string[] = [] // Collect unknown args to pass through to claude
+
+      for (let i = 0; i < claudeArgs.length; i++) {
+        const arg = claudeArgs[i]
+
+        if (arg === '-h' || arg === '--help') {
+          showHelp = true
+          unknownArgs.push(arg)
+        } else if (arg === '-v' || arg === '--version') {
+          showVersion = true
+          unknownArgs.push(arg)
+        } else if (arg === '--happy-starting-mode') {
+          options.startingMode = z.enum(['local', 'remote']).parse(claudeArgs[++i])
+        } else if (arg === '--yolo') {
+          unknownArgs.push('--dangerously-skip-permissions')
+        } else if (arg === '--started-by') {
+          options.startedBy = claudeArgs[++i] as 'daemon' | 'terminal'
+        } else {
+          unknownArgs.push(arg)
+          if (i + 1 < claudeArgs.length && !claudeArgs[i + 1].startsWith('-')) {
+            unknownArgs.push(claudeArgs[++i])
+          }
+        }
+      }
+
+      if (unknownArgs.length > 0) {
+        options.claudeArgs = [...(options.claudeArgs || []), ...unknownArgs]
+      }
+
+      if (showHelp) {
+        console.log(`
+${chalk.bold('uhappy happy-claude')} - Original Happy CLI Claude Integration
+
+${chalk.bold('Usage:')}
+  uhappy happy-claude [options]     Start Claude with original Happy CLI mobile control
+
+${chalk.bold('Examples:')}
+  uhappy happy-claude              Start Claude session with Happy integration
+  uhappy happy-claude --yolo       Start with bypassing permissions
+  uhappy happy-claude --resume     Resume previous session
+
+${chalk.bold('Note:')} This uses the original Happy CLI Claude integration with mobile control.
+For simple CLI wrapping, use: ${chalk.cyan('uhappy claude')}
+
+${chalk.gray('─'.repeat(60))}
+${chalk.bold.cyan('Claude Code Options (from `claude --help`):')}
+`)
+
+        try {
+          const claudeHelp = execFileSync(process.execPath, [claudeCliPath, '--help'], { encoding: 'utf8' })
+          console.log(claudeHelp)
+        } catch (e) {
+          console.log(chalk.yellow('Could not retrieve claude help. Make sure claude is installed.'))
+        }
+
+        process.exit(0)
+      }
+
+      if (showVersion) {
+        console.log(`uhappy version: ${packageJson.version}`)
+      }
+
+      const { credentials } = await authAndSetupMachineIfNeeded();
+
+      // Auto-start daemon for Happy Claude mode
+      logger.debug('Ensuring Happy background service is running & matches our version...');
+      if (!(await isDaemonRunningCurrentlyInstalledHappyVersion())) {
+        logger.debug('Starting Happy background service...');
+        const daemonProcess = spawnHappyCLI(['daemon', 'start-sync'], {
+          detached: true,
+          stdio: 'ignore',
+          env: process.env
+        })
+        daemonProcess.unref();
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      await runClaude(credentials, options);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error')
+      if (process.env.DEBUG) {
+        console.error(error)
+      }
+      process.exit(1)
+    }
+    return;
   } else if (subcommand === 'codex') {
-    // Handle codex command
+    // Handle codex command (special mode)
     try {
       const { runCodex } = await import('@/codex/runCodex');
-      
+
       // Parse startedBy argument
       let startedBy: 'daemon' | 'terminal' | undefined = undefined;
       for (let i = 1; i < args.length; i++) {
@@ -89,7 +240,7 @@ import { execFileSync } from 'node:child_process'
           startedBy = args[++i] as 'daemon' | 'terminal';
         }
       }
-      
+
       const {
         credentials
       } = await authAndSetupMachineIfNeeded();
@@ -241,132 +392,155 @@ ${chalk.bold('To clean up runaway processes:')} Use ${chalk.cyan('happy doctor c
     }
     return;
   } else {
+    // Default behavior: Use Universal CLI Wrapper
 
-    // If the first argument is claude, remove it
-    if (args.length > 0 && args[0] === 'claude') {
-      args.shift()
-    }
-
-    // Parse command line arguments for main command
-    const options: StartOptions = {}
+    // Check for help and version flags ONLY if this is a top-level help request
+    // (i.e., no subcommand like 'start' is present)
     let showHelp = false
     let showVersion = false
-    const unknownArgs: string[] = [] // Collect unknown args to pass through to claude
 
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i]
+    // Only intercept help/version if the first argument is not a known command
+    const firstArg = args[0];
+    const knownCommands = ['start', 'interactive', 'list', 'send', 'history', 'kill', 'stats', 'config', 'test'];
+    const isTopLevelCall = !knownCommands.includes(firstArg) && firstArg !== '--';
 
-      if (arg === '-h' || arg === '--help') {
-        showHelp = true
-        // Also pass through to claude
-        unknownArgs.push(arg)
-      } else if (arg === '-v' || arg === '--version') {
-        showVersion = true
-        // Also pass through to claude (will show after our version)
-        unknownArgs.push(arg)
-      } else if (arg === '--happy-starting-mode') {
-        options.startingMode = z.enum(['local', 'remote']).parse(args[++i])
-      } else if (arg === '--yolo') {
-        // Shortcut for --dangerously-skip-permissions
-        unknownArgs.push('--dangerously-skip-permissions')
-      } else if (arg === '--started-by') {
-        options.startedBy = args[++i] as 'daemon' | 'terminal'
-      } else {
-        // Pass unknown arguments through to claude
-        unknownArgs.push(arg)
-        // Check if this arg expects a value (simplified check for common patterns)
-        if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
-          unknownArgs.push(args[++i])
+    if (isTopLevelCall) {
+      for (const arg of args) {
+        if (arg === '-h' || arg === '--help') {
+          showHelp = true
+          break
+        } else if (arg === '-v' || arg === '--version') {
+          showVersion = true
+          break
         }
       }
-    }
-
-    // Add unknown args to claudeArgs
-    if (unknownArgs.length > 0) {
-      options.claudeArgs = [...(options.claudeArgs || []), ...unknownArgs]
     }
 
     // Show help
     if (showHelp) {
       console.log(`
-${chalk.bold('happy')} - Claude Code On the Go
+${chalk.bold('uhappy')} - Universal CLI Wrapper with Remote Control
 
-${chalk.bold('Usage:')}
-  happy [options]         Start Claude with mobile control
-  happy auth              Manage authentication
-  happy codex             Start Codex mode
-  happy connect           Connect AI vendor API keys
-  happy notify            Send push notification
-  happy daemon            Manage background service that allows
-                            to spawn new sessions away from your computer
-  happy doctor            System diagnostics & troubleshooting
+${chalk.bold('Universal CLI Commands:')}
+  uhappy start <command> [args...]     Wrap any CLI tool with enhanced features
+  uhappy interactive <command>         Start interactive session
+  uhappy list [--verbose]              List active sessions
+  uhappy send <sessionId> <input>      Send input to session
+  uhappy history <sessionId>           View session history
+  uhappy kill <sessionId>              Terminate session
+  uhappy stats                         Show system statistics
+  uhappy test                          Run functionality test
+
+${chalk.bold('Configuration:')}
+  uhappy config list                   List configured tools
+  uhappy config add <name> <command>   Add tool configuration
+
+${chalk.bold('CLI Tool Wrapping:')}
+  uhappy claude [options]              Wrap Claude Code with universal CLI features
+  uhappy codex                         Codex AI programming mode
+
+${chalk.bold('Special Happy CLI Modes:')}
+  uhappy happy-claude [options]        Original Happy CLI Claude integration with mobile control
+  uhappy auth                          Manage authentication
+  uhappy connect                       Connect AI vendor API keys
+  uhappy notify                        Send push notification
+  uhappy daemon                        Manage background service
+  uhappy doctor                        System diagnostics
 
 ${chalk.bold('Examples:')}
-  happy                    Start session
-  happy --yolo             Start with bypassing permissions 
-                            happy sugar for --dangerously-skip-permissions
-  happy auth login --force Authenticate
-  happy doctor             Run diagnostics
+  uhappy start -- git status          Wrap git with enhanced output
+  uhappy start -- docker ps           Monitor docker processes
+  uhappy claude --resume              Wrap Claude Code with session management
+  uhappy happy-claude --resume         Use original Happy CLI integration
+  uhappy interactive node              Start interactive Node.js session
 
-${chalk.bold('Happy supports ALL Claude options!')}
-  Use any claude flag with happy as you would with claude. Our favorite:
-
-  happy --resume
-
-${chalk.gray('─'.repeat(60))}
-${chalk.bold.cyan('Claude Code Options (from `claude --help`):')}
+${chalk.bold('Note:')} By default, uhappy uses the universal CLI wrapper.
+For original Happy CLI integration, use: ${chalk.cyan('uhappy happy-claude [options]')}
 `)
-      
-      // Run claude --help and display its output
-      // Use execFileSync with the current Node executable for cross-platform compatibility
-      try {
-        const claudeHelp = execFileSync(process.execPath, [claudeCliPath, '--help'], { encoding: 'utf8' })
-        console.log(claudeHelp)
-      } catch (e) {
-        console.log(chalk.yellow('Could not retrieve claude help. Make sure claude is installed.'))
-      }
-      
       process.exit(0)
     }
 
     // Show version
     if (showVersion) {
-      console.log(`happy version: ${packageJson.version}`)
-      // Don't exit - continue to pass --version to Claude Code
+      console.log(`uhappy version: ${packageJson.version}`)
+      process.exit(0)
     }
 
-    // Normal flow - auth and machine setup
-    const {
-      credentials
-    } = await authAndSetupMachineIfNeeded();
+    // Handle direct command delegation (no subcommand specified)
+    // This means the user wants to use the universal CLI wrapper directly
+    if (args.length === 0) {
+      console.log(`
+${chalk.bold('Welcome to Universal Happy CLI!')}
 
-    // Always auto-start daemon for simplicity
-    logger.debug('Ensuring Happy background service is running & matches our version...');
+${chalk.yellow('No command specified.')} Here are some options:
 
-    if (!(await isDaemonRunningCurrentlyInstalledHappyVersion())) {
-      logger.debug('Starting Happy background service...');
+${chalk.bold('Quick Start:')}
+  ${chalk.cyan('uhappy start -- echo "Hello World"')}     Test the universal wrapper
+  ${chalk.cyan('uhappy test')}                           Run functionality test
+  ${chalk.cyan('uhappy --help')}                         Show all commands
 
-      // Use the built binary to spawn daemon
-      const daemonProcess = spawnHappyCLI(['daemon', 'start-sync'], {
-        detached: true,
-        stdio: 'ignore',
-        env: process.env
-      })
-      daemonProcess.unref();
+${chalk.bold('Common Usage:')}
+  ${chalk.cyan('uhappy start -- git status')}             Wrap git commands
+  ${chalk.cyan('uhappy interactive python')}              Interactive Python session
+  ${chalk.cyan('uhappy claude')}                          Use Claude Code integration
 
-      // Give daemon a moment to write PID & port file
-      await new Promise(resolve => setTimeout(resolve, 200));
+For full help: ${chalk.cyan('uhappy --help')}
+`)
+      process.exit(0)
     }
 
-    // Start the CLI
+    // Check if we have a -- separator, indicating direct command delegation
+    const separatorIndex = args.indexOf('--');
+    if (separatorIndex !== -1) {
+      // Remove the -- and everything before it, delegate the rest
+      const commandArgs = ['start', ...args];
+      args.splice(0, args.length, ...commandArgs);
+    }
+
+    // Delegate to universal CLI
     try {
-      await runClaude(credentials, options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error')
-      if (process.env.DEBUG) {
-        console.error(error)
-      }
-      process.exit(1)
+      // Use spawn instead of execSync for better cross-platform compatibility
+      const { spawn } = await import('node:child_process');
+
+      // Use relative path to universal CLI
+      const universalCliPath = './src/universal/cli.ts';
+
+      // Use spawn with npx tsx for cross-platform compatibility
+      const child = spawn('npx', [
+        'tsx',
+        universalCliPath,
+        ...args
+      ], {
+        stdio: 'inherit',
+        env: process.env,
+        cwd: process.cwd(),
+        shell: true // Enable shell to find npx on Windows
+      });
+
+      child.on('exit', (code) => {
+        process.exit(code || 0);
+      });
+
+      child.on('error', (error) => {
+        console.error(chalk.red('Failed to start universal CLI:'), error);
+        process.exit(1);
+      });
+
+    } catch (error: any) {
+      console.error(chalk.red('Failed to delegate to universal CLI:'), error.message);
+      console.log(chalk.yellow('Falling back to help...'));
+
+      console.log(`
+${chalk.bold('uhappy')} - Universal CLI Wrapper
+
+Run ${chalk.cyan('uhappy --help')} for usage information.
+Or try: ${chalk.cyan('uhappy start -- echo "Hello World"')}
+
+${chalk.gray('Troubleshooting:')}
+- Make sure you have ${chalk.cyan('tsx')} installed: ${chalk.cyan('npm install -g tsx')}
+- Or use the built version: ${chalk.cyan('npm run build')} first
+`)
+      process.exit(1);
     }
   }
 })();

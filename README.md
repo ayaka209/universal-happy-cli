@@ -1,8 +1,14 @@
 # Universal Happy CLI
 
-A powerful, universal CLI wrapper with remote control capabilities. Wrap any command-line tool with enhanced features like ANSI processing, session management, and mobile remote control.
+A powerful, universal CLI wrapper with remote control capabilities. **Now defaults to universal CLI wrapping** with special modes for Claude and Codex integration.
 
 **Free. Open source. Control any CLI tool from anywhere.**
+
+## 🎯 New Default Behavior
+
+Universal Happy CLI now defaults to the universal CLI wrapper mode:
+- **Default**: `uhappy <command>` → Uses universal CLI wrapper
+- **Special Modes**: `uhappy claude` or `uhappy codex` → Uses original integrations
 
 ## ✨ Features
 
@@ -13,8 +19,11 @@ A powerful, universal CLI wrapper with remote control capabilities. Wrap any com
 - **Smart Stream Processing** - Real-time processing of progress bars, partial lines, carriage return overwrites
 - **Session Management** - Multi-session concurrency, history tracking, status monitoring
 
-### 📱 Remote Control (Legacy from Happy CLI)
-- **Claude Code Integration** - Remote control of Claude Code sessions
+### 📱 Remote Control & Tool Integration
+- **Universal CLI Remote Control** - Remote control any wrapped CLI tool
+- **Claude Code Wrapping** - Available via `uhappy claude` (universal CLI mode)
+- **Original Happy Claude** - Available via `uhappy happy-claude` (mobile control mode)
+- **Codex AI Mode** - Available via `uhappy codex` (special mode)
 - **Real-time Sync** - Mobile and desktop real-time session sharing
 - **QR Code Connection** - Scan to connect, no complex configuration needed
 - **Push Notifications** - Real-time notifications to mobile devices
@@ -66,10 +75,11 @@ npm run build:deno # Creates ~45MB executable
 
 ### Basic Usage
 
-#### 1. Universal CLI Wrapper
+#### 1. Default Universal CLI Wrapper (New Default!)
 ```bash
-# Wrap any CLI tool with enhanced features (note the -- separator)
-uhappy start -- git status
+# NEW DEFAULT BEHAVIOR - No 'start' command needed!
+uhappy -- git status              # Direct universal wrapping
+uhappy start -- git status        # Explicit start command (also works)
 uhappy start --format html -- docker ps
 uhappy start -- python -i
 
@@ -79,15 +89,14 @@ uhappy send abc123 "git commit -m 'update'"
 uhappy history abc123 --format json
 uhappy stats
 
+# Quick testing and help
+uhappy test                       # Quick functionality test
+uhappy --help                     # Show all commands
+
 # Development commands (when using from source)
 npm start -- start -- echo "Hello World"
 npm run test
 npm run test:all
-
-# Quick testing
-npm run test:quick        # Fast functionality test
-npm run test:format       # ANSI processing test
-npm run test:real-world   # Real CLI tools test
 ```
 
 #### 2. Interactive Mode
@@ -98,22 +107,31 @@ uhappy interactive node
 uhappy interactive mysql -u root -p
 ```
 
-#### 3. Legacy Happy CLI Features
+#### 3. CLI Tool Wrapping & Special Modes
 ```bash
-# Start Claude Code with QR code for mobile control
-uhappy claude
+# CLI tool wrapping (NEW!)
+uhappy claude                     # Wrap Claude Code with universal CLI features
+uhappy claude --resume            # Claude with session management and logging
 
 # Codex AI programming mode
 uhappy codex
 
-# Daemon mode
-uhappy daemon start
+# Original Happy CLI Integration (when you need mobile control)
+uhappy happy-claude               # Start Claude with original Happy CLI mobile control
+uhappy happy-claude --resume      # Resume with full Happy CLI features
+
+# Management commands
+uhappy daemon start              # Daemon management
+uhappy auth                      # Authentication
+uhappy connect                   # API key management
+uhappy notify                    # Push notifications
 ```
 
 ## 📋 Command Reference
 
-### Universal CLI Commands
-- `uhappy start <command> [args...]` – Start a CLI tool session
+### Universal CLI Commands (Default Behavior)
+- `uhappy [command] [args...]` – **NEW DEFAULT**: Direct universal CLI wrapping
+- `uhappy start <command> [args...]` – Explicit start command (still works)
 - `uhappy interactive <command> [args...]` – Start interactive session
 - `uhappy list [--verbose]` – List active sessions
 - `uhappy send <sessionId> <input>` – Send input to session
@@ -121,6 +139,13 @@ uhappy daemon start
 - `uhappy kill <sessionId> [--force]` – Terminate session
 - `uhappy stats` – Show system statistics
 - `uhappy test` – Run functionality tests
+
+### CLI Tool Wrapping Commands
+- `uhappy claude [options]` – Wrap Claude Code with universal CLI features
+- `uhappy codex` – Codex AI programming mode
+
+### Special Happy CLI Integration
+- `uhappy happy-claude [options]` – Original Happy CLI Claude integration with mobile control
 
 ### Configuration Commands
 - `uhappy config list` – List configured tools
@@ -156,10 +181,8 @@ npm run legacy:dev        # Legacy development mode
 npm run legacy:test       # Legacy test suite
 ```
 
-### Legacy Happy CLI Commands
-- `uhappy claude` – Start Claude Code with mobile remote control
+### Legacy/Management Commands
 - `uhappy auth` – Manage authentication
-- `uhappy codex` – Start Codex AI programming mode
 - `uhappy connect` – Manage cloud API keys
 - `uhappy notify` – Send push notifications
 - `uhappy daemon` – Manage background service
@@ -238,14 +261,19 @@ npm install -g ./universal-happy-cli-1.0.0.tgz
 
 ### Quick Testing Examples
 ```bash
-# Test different CLI tools
-npx tsx src/universal/cli.ts start -- git log --oneline --color=always -5
-npx tsx src/universal/cli.ts start -- node -e "console.log(process.versions)"
-npx tsx src/universal/cli.ts start -- python -c "import sys; print(sys.version)"
+# NEW DEFAULT BEHAVIOR - Direct wrapping
+npx tsx src/index.ts -- echo "Hello Universal CLI"
+npx tsx src/index.ts start -- git log --oneline --color=always -5
+npx tsx src/index.ts start -- node -e "console.log(process.versions)"
 
-# Test different output formats
-npx tsx src/universal/cli.ts start --format json -- echo "JSON output"
-npx tsx src/universal/cli.ts start --format html -- git status
+# Test Claude wrapping vs Happy integration
+npx tsx src/index.ts claude --help          # Universal CLI wrapper
+npx tsx src/index.ts happy-claude --help    # Original Happy CLI integration
+npx tsx src/index.ts codex --help
+
+# Test different output formats (via start command)
+npx tsx src/index.ts start --format json -- echo "JSON output"
+npx tsx src/index.ts start --format html -- git status
 
 # Run test suites
 npm run test:quick      # Fast functionality test
